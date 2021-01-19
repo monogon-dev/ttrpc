@@ -31,6 +31,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
+	ostatus "google.golang.org/grpc/status"
 )
 
 // ErrClosed is returned by client methods when the underlying connection is
@@ -138,7 +139,8 @@ func (c *Client) Call(ctx context.Context, service, method string, req, resp int
 	}
 
 	if cresp.Status != nil && cresp.Status.Code != int32(codes.OK) {
-		return status.ErrorProto(cresp.Status)
+		// TODO(q3k): carry over details
+		return ostatus.New(codes.Code(cresp.Status.Code), cresp.Status.Message).Err()
 	}
 	return nil
 }

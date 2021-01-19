@@ -51,6 +51,7 @@ import (
 
 	"github.com/containerd/ttrpc/grpc/internal/status"
 	"google.golang.org/grpc/codes"
+	ostatus "google.golang.org/grpc/status"
 )
 
 // Status references google.golang.org/grpc/internal/status. It represents an
@@ -101,6 +102,12 @@ func FromError(err error) (s *Status, ok bool) {
 	}); ok {
 		return se.GRPCStatus(), true
 	}
+	if se, ok := err.(interface {
+		GRPCStatus() *ostatus.Status
+	}); ok {
+		ose := se.GRPCStatus()
+		return New(ose.Code(), ose.Message()), true
+	}
 	return New(codes.Unknown, err.Error()), false
 }
 
@@ -120,6 +127,11 @@ func Code(err error) codes.Code {
 	}
 	if se, ok := err.(interface {
 		GRPCStatus() *Status
+	}); ok {
+		return se.GRPCStatus().Code()
+	}
+	if se, ok := err.(interface {
+		GRPCStatus() *ostatus.Status
 	}); ok {
 		return se.GRPCStatus().Code()
 	}

@@ -31,6 +31,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/procfs"
 	"google.golang.org/grpc/codes"
+	ostatus "google.golang.org/grpc/status"
 )
 
 const serviceName = "testService"
@@ -75,6 +76,10 @@ func (s *testingServer) Test(ctx context.Context, req *testPayload) (*testPayloa
 	tp := &testPayload{Foo: strings.Repeat(req.Foo, 2)}
 	if dl, ok := ctx.Deadline(); ok {
 		tp.Deadline = dl.UnixNano()
+	}
+
+	if req.Foo == "error" {
+		return nil, ostatus.Error(codes.NotFound, "as requested")
 	}
 
 	if v, ok := GetMetadataValue(ctx, "foo"); ok {
@@ -133,6 +138,20 @@ func TestServer(t *testing.T) {
 		if !reflect.DeepEqual(result.received, result.expected) {
 			t.Fatalf("unexpected response: %+#v != %+#v", result.received, result.expected)
 		}
+	}
+
+	_, err := tclient.Test(ctx, &testPayload{
+		Foo: "error",
+	})
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	s, ok := ostatus.FromError(err)
+	if !ok {
+		t.Fatalf("expected status, got %v", err)
+	}
+	if s.Code() != codes.NotFound {
+		t.Fatalf("expected NotFound got %v", s.Code())
 	}
 }
 
